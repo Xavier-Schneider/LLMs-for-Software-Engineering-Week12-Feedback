@@ -1,4 +1,4 @@
-# Week 12 Feedback: TITLE
+# Week 12 Feedback: Logging
 
 **Authors:** Xavier Schneider, Greg French, Max Ku 
 
