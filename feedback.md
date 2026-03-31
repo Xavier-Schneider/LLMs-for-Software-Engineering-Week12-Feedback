@@ -43,6 +43,558 @@
 
 ---
 
+Problem B: Machine Learning Logging  
+
+Model: GPT-5 mini  
+
+**Task Description**
+You are given a PyTorch script that trains a feed-forward neural network. The problem is that it’s filled with print statements. Your boss wants you to use logging statements instead, so the script is ready to run in a production environment. Your task is to make your boss happy by replacing the print statements with logging statements.
+
+**Starter Code**
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+
+print("=== Starting Script ===")
+
+# -----------------------------
+# 1. Create some example data
+# -----------------------------
+print("\n[1] Generating synthetic dataset...")
+
+X, y = make_classification(
+    n_samples=2000,
+    n_features=20,
+    n_informative=15,
+    n_classes=2,
+    random_state=42
+)
+
+print(f"Dataset shape: X={X.shape}, y={y.shape}")
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+print(f"Train set: {X_train.shape}, Test set: {X_test.shape}")
+
+# Standardize inputs
+print("\n[2] Normalizing data...")
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Convert to PyTorch tensors
+print("[3] Converting data to PyTorch tensors...")
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
+y_train = torch.tensor(y_train, dtype=torch.long)
+y_test = torch.tensor(y_test, dtype=torch.long)
+
+print(f"Tensor shapes: X_train={X_train.shape}, y_train={y_train.shape}")
+
+# Create datasets and loaders
+print("\n[4] Creating DataLoaders...")
+train_dataset = TensorDataset(X_train, y_train)
+test_dataset = TensorDataset(X_test, y_test)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=32)
+
+print(f"Train batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+
+
+# -----------------------------
+# 2. Define the neural network
+# -----------------------------
+print("\n[5] Defining model...")
+
+class FeedForwardNN(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, num_classes: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, num_classes)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+# -----------------------------
+# 3. Set up device, model, loss
+# -----------------------------
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"\n[6] Using device: {device}")
+
+input_size = X_train.shape[1]
+hidden_size = 64
+num_classes = 2
+
+model = FeedForwardNN(input_size, hidden_size, num_classes).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+print("Model initialized.")
+print(model)
+
+
+# -----------------------------
+# 4. Training loop
+# -----------------------------
+print("\n[7] Starting training...\n")
+
+num_epochs = 20
+
+for epoch in range(num_epochs):
+    print(f"\n--- Epoch {epoch + 1}/{num_epochs} ---")
+    model.train()
+    running_loss = 0.0
+
+    for batch_idx, (inputs, labels) in enumerate(train_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        # Forward pass
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+        # Print every 10 batches
+        if batch_idx % 10 == 0:
+            print(f"Batch {batch_idx:03d} | Loss: {loss.item():.4f}")
+
+    avg_loss = running_loss / len(train_loader)
+    print(f"Epoch {epoch + 1} complete. Average Loss: {avg_loss:.4f}")
+
+
+# -----------------------------
+# 5. Evaluation
+# -----------------------------
+print("\n[8] Evaluating model...")
+model.eval()
+
+correct = 0
+total = 0
+
+with torch.no_grad():
+    for batch_idx, (inputs, labels) in enumerate(test_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        outputs = model(inputs)
+        _, predicted = torch.max(outputs, dim=1)
+
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+        if batch_idx % 5 == 0:
+            print(f"Evaluated batch {batch_idx}")
+
+accuracy = 100 * correct / total
+print(f"\nFinal Test Accuracy: {accuracy:.2f}%")
+
+print("\n=== Script Finished ===")
+```
+
+---
+
+### 2. Guidelines that didn't work for Problem B
+
+#### Guideline 3: Avoid Logging on Hot Paths
+
+**Guideline Definition**  
+Keep logging statements out of frequently executed sections of code, such as tight loops or performance-critical data processing paths.
+
+**Prompt and Context:**  
+```
+Prompt:  
+Can you replace all print statements in this script with logging statements? Avoid logging in loops under any circumstances. If there are print statements in loops, remove them completely.
+
+Context:  
+The PyTorch training script.
+```
+
+**Solution or Output generated by GitHub Copilot:**  
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.info("=== Starting Script ===")
+
+# -----------------------------
+# 1. Create some example data
+# -----------------------------
+logging.info("[1] Generating synthetic dataset...")
+
+X, y = make_classification(
+    n_samples=2000,
+    n_features=20,
+    n_informative=15,
+    n_classes=2,
+    random_state=42
+)
+
+logging.info(f"Dataset shape: X={X.shape}, y={y.shape}")
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+logging.info(f"Train set: {X_train.shape}, Test set: {X_test.shape}")
+
+# Standardize inputs
+logging.info("[2] Normalizing data...")
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Convert to PyTorch tensors
+logging.info("[3] Converting data to PyTorch tensors...")
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
+y_train = torch.tensor(y_train, dtype=torch.long)
+y_test = torch.tensor(y_test, dtype=torch.long)
+
+logging.info(f"Tensor shapes: X_train={X_train.shape}, y_train={y_train.shape}")
+
+# Create datasets and loaders
+logging.info("[4] Creating DataLoaders...")
+train_dataset = TensorDataset(X_train, y_train)
+test_dataset = TensorDataset(X_test, y_test)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=32)
+
+logging.info(f"Train batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+
+
+# -----------------------------
+# 2. Define the neural network
+# -----------------------------
+logging.info("[5] Defining model...")
+
+class FeedForwardNN(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, num_classes: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, num_classes)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+# -----------------------------
+# 3. Set up device, model, loss
+# -----------------------------
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logging.info(f"[6] Using device: {device}")
+
+input_size = X_train.shape[1]
+hidden_size = 64
+num_classes = 2
+
+model = FeedForwardNN(input_size, hidden_size, num_classes).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+logging.info("Model initialized.")
+logging.info(str(model))
+
+
+# -----------------------------
+# 4. Training loop
+# -----------------------------
+logging.info("[7] Starting training...")
+
+num_epochs = 20
+
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+
+    for batch_idx, (inputs, labels) in enumerate(train_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        # Forward pass
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+        # Per-user instruction: avoid logging in loops — do not log batch-level info
+
+    avg_loss = running_loss / len(train_loader)
+    # Aggregate epoch-level info can be logged after the loop finishes to avoid logging inside loops
+logging.info(f"Training complete. Last computed average loss: {avg_loss:.4f}")
+
+
+# -----------------------------
+# 5. Evaluation
+# -----------------------------
+logging.info("[8] Evaluating model...")
+model.eval()
+
+correct = 0
+total = 0
+
+with torch.no_grad():
+    for batch_idx, (inputs, labels) in enumerate(test_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        outputs = model(inputs)
+        _, predicted = torch.max(outputs, dim=1)
+
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+        # Per-user instruction: removed batch-level evaluation prints/logs
+
+accuracy = 100 * correct / total
+logging.info(f"Final Test Accuracy: {accuracy:.2f}%")
+
+logging.info("=== Script Finished ===")
+```
+
+**Analysis:**  
+
+When using the model to avoid logging any and all information inside loops, you can end up losing valuable information, such as the loss per batch/epoch during training. This suggests that a softer approach, allowing logging inside loops as long as it's not per iteration, should be permitted under certain circumstances.
+
+---
+
+### 3. New and Updated Guidelines that worked for Problem B
+
+#### Guideline 3: Avoid Logging in Places That Would Lead to an Excessive Amount of Logs Produced
+
+**Guideline Definition**
+Be specific in informing the LLM to avoid logging in places of the code that would lead to large amounts of logs being produced. For example, logging in loops is ok if it’s not logging at every iteration, but instead logging at every ith iteration.
+
+**Prompt and Context:**  
+```
+Prompt:  
+Can you replace all print statements in this script with logging statements? Avoid logging at places that would produce an excessive amount of logs. If replacing a print statement with a log statement would produce an excessive amount of logs, remove that print statement completely.
+
+Context:  
+The PyTorch training script.
+```
+
+**Solution or Output generated by GitHub Copilot:**  
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
+
+
+logger.info("=== Starting Script ===")
+
+# -----------------------------
+# 1. Create some example data
+# -----------------------------
+logger.info("[1] Generating synthetic dataset...")
+
+X, y = make_classification(
+    n_samples=2000,
+    n_features=20,
+    n_informative=15,
+    n_classes=2,
+    random_state=42
+)
+
+logger.info(f"Dataset shape: X={X.shape}, y={y.shape}")
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+logger.info(f"Train set: {X_train.shape}, Test set: {X_test.shape}")
+
+# Standardize inputs
+logger.info("[2] Normalizing data...")
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Convert to PyTorch tensors
+logger.info("[3] Converting data to PyTorch tensors...")
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
+y_train = torch.tensor(y_train, dtype=torch.long)
+y_test = torch.tensor(y_test, dtype=torch.long)
+
+logger.info(f"Tensor shapes: X_train={X_train.shape}, y_train={y_train.shape}")
+
+# Create datasets and loaders
+logger.info("[4] Creating DataLoaders...")
+train_dataset = TensorDataset(X_train, y_train)
+test_dataset = TensorDataset(X_test, y_test)
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=32)
+
+logger.info(f"Train batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+
+
+# -----------------------------
+# 2. Define the neural network
+# -----------------------------
+logger.info("[5] Defining model...")
+
+class FeedForwardNN(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, num_classes: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, num_classes)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
+
+
+# -----------------------------
+# 3. Set up device, model, loss
+# -----------------------------
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logger.info(f"[6] Using device: {device}")
+
+input_size = X_train.shape[1]
+hidden_size = 64
+num_classes = 2
+
+model = FeedForwardNN(input_size, hidden_size, num_classes).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+logger.info("Model initialized.")
+logger.info("Model:\n%s", model)
+
+
+# -----------------------------
+# 4. Training loop
+# -----------------------------
+logger.info("[7] Starting training...")
+
+num_epochs = 20
+
+for epoch in range(num_epochs):
+    logger.info(f"--- Epoch {epoch + 1}/{num_epochs} ---")
+    model.train()
+    running_loss = 0.0
+
+    for batch_idx, (inputs, labels) in enumerate(train_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        # Forward pass
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+        # Log every 10 batches at DEBUG level to avoid excessive INFO logs
+        if batch_idx % 10 == 0:
+            logger.debug(f"Batch {batch_idx:03d} | Loss: {loss.item():.4f}")
+
+    avg_loss = running_loss / len(train_loader)
+    logger.info(f"Epoch {epoch + 1} complete. Average Loss: {avg_loss:.4f}")
+
+
+# -----------------------------
+# 5. Evaluation
+# -----------------------------
+logger.info("[8] Evaluating model...")
+model.eval()
+
+correct = 0
+total = 0
+
+with torch.no_grad():
+    for batch_idx, (inputs, labels) in enumerate(test_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        outputs = model(inputs)
+        _, predicted = torch.max(outputs, dim=1)
+
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+        # Evaluation batch-level messages logged at DEBUG
+        if batch_idx % 5 == 0:
+            logger.debug(f"Evaluated batch {batch_idx}")
+
+accuracy = 100 * correct / total
+logger.info(f"Final Test Accuracy: {accuracy:.2f}%")
+logger.info("=== Script Finished ===")
+```
+
+**Analysis:**
+
+As we can see, with this softer approach to logging, the LLM can discern where it may be advantageous to log within loops. The LLM determines that logging occurs only for each ith batch within each epoch, so it retains this valuable information for training rather than discarding it entirely.
+
+Credits:  
+PyTorch training code generated by GPT 5.4.
+
+...
+
+---
 
 Problem C: Logging Misses Important Information
 
